@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/spectra-cdp",
+    "crates/spectra-tools",
+    "crates/spectra-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Shield-1.0.0"
+authors = ["AstroQuest"]
+repository = "https://github.com/AstroQuestStudio/Spectra-MCP"
+homepage = "https://astroquest.fr"
+description = "Native Rust MCP server that drives Chrome directly over the Chrome DevTools Protocol (CDP)."
+keywords = ["mcp", "browser", "cdp", "automation", "ai-agents"]
+categories = ["development-tools", "web-programming"]
+readme = "README.md"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+futures = "0.3"
+chromiumoxide = { version = "0.7", features = ["tokio-runtime"] }
+rmcp = { version = "0.16", features = ["server", "transport-io", "macros"] }
+
+[profile.release]
+# LTO "fat" + codegen-units=1 fait planter LLVM par manque de mémoire sur cette
+# machine (rustc-LLVM ERROR: out of memory pendant le linking final). "thin"
+# capture l'essentiel du gain de perf pour une fraction du pic mémoire.
+lto = "thin"
+strip = true
+codegen-units = 4
+opt-level = 3

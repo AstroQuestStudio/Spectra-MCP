@@ -1,0 +1,24 @@
+[package]
+name = "spectra-tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+rmcp.workspace = true
+chromiumoxide.workspace = true
+spectra-cdp = { path = "../spectra-cdp" }

@@ -1,0 +1,25 @@
+[package]
+name = "spectra-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+
+[[bin]]
+name = "spectra-server"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+rmcp.workspace = true
+spectra-cdp = { path = "../spectra-cdp" }
+spectra-tools = { path = "../spectra-tools" }
