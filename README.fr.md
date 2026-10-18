@@ -20,7 +20,7 @@ Voir [`docs/COMPARISON.md`](docs/COMPARISON.md) pour le comparatif chiffré face
 
 ### Prérequis
 
-- Rust (édition 2021, toolchain stable) — `rustup` avec target `x86_64-pc-windows-msvc`
+- Rust (édition 2021, toolchain stable). Sur Windows, utiliser la target `x86_64-pc-windows-msvc` ; sur macOS, installer les outils Xcode (`xcode-select --install`).
 - Sur Windows : Visual Studio Build Tools avec le workload **Desktop development with C++** (le compilateur MSVC) **et** le composant **Windows SDK — Desktop C++ x64/x86** (contient `kernel32.lib` et les autres bibliothèques Win32 ; souvent absent d'une installation minimale des Build Tools, à ajouter explicitement)
 - Node.js **22+** dans le PATH (uniquement nécessaire pour `browser_run_recipe`, dégrade gracieusement si absent) — le runtime des recipes (`recipe-runner.mjs`) utilise le `WebSocket` global natif de Node, stable seulement depuis la version 22 ; sur une version antérieure, `browser_run_recipe` échouerait avec `WebSocket is not defined`
 - Google Chrome installé (détecté automatiquement dans les emplacements standards)
@@ -33,7 +33,7 @@ cargo build --release
 
 Le profil `release` utilise `lto = "thin"` plutôt que `lto = true` (fat LTO) — le LTO complet a fait planter LLVM par manque de mémoire sur une machine de développement standard pendant la mise au point de ce projet ; `thin` capture l'essentiel du gain de performance sans ce risque.
 
-Le binaire final se trouve dans `target/release/spectra-server.exe`.
+Le binaire final se trouve dans `target/release/spectra-server.exe` sur Windows, ou `target/release/spectra-server` sur macOS/Linux.
 
 ### Installation permanente
 
@@ -41,6 +41,26 @@ Le binaire final se trouve dans `target/release/spectra-server.exe`.
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.spectra\bin"
 Copy-Item "target\release\spectra-server.exe" "$env:USERPROFILE\.spectra\bin\spectra-server.exe"
 ```
+
+Sur macOS/Linux :
+
+```sh
+mkdir -p "$HOME/.spectra/bin"
+cp target/release/spectra-server "$HOME/.spectra/bin/spectra-server"
+```
+
+Les profils et le runtime des recipes sont stockés sous `%LOCALAPPDATA%\Spectra` sur Windows,
+`~/Library/Application Support/Spectra` sur macOS et `$XDG_DATA_HOME/Spectra`
+(par défaut `~/.local/share/Spectra`) sur Linux, jamais dans le dépôt source.
+
+Pour Codex, enregistrer le binaire installé (macOS/Linux) :
+
+```sh
+codex mcp add spectra -- "$HOME/.spectra/bin/spectra-server"
+```
+
+Node.js 22+ doit être dans le `PATH` du serveur MCP pour les recipes. Avec une
+installation Homebrew versionnée de Node, ajouter son répertoire `bin` à cet environnement.
 
 ## Activation dans Claude Code
 
