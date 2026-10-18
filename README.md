@@ -24,7 +24,7 @@ See [`docs/COMPARISON.md`](docs/COMPARISON.md) for the measured comparison again
 
 ### Prerequisites
 
-- Rust (2021 edition, stable toolchain) — `rustup` with the `x86_64-pc-windows-msvc` target
+- Rust (2021 edition, stable toolchain). On Windows, use the `x86_64-pc-windows-msvc` target; on macOS, install Xcode Command Line Tools (`xcode-select --install`).
 - On Windows: Visual Studio Build Tools with the **Desktop development with C++** workload (the MSVC compiler) **and** the **Windows SDK — Desktop C++ x64/x86** component (it contains `kernel32.lib` and the other Win32 libraries; often missing from a minimal Build Tools installation, so add it explicitly)
 - Node.js **22+** on the PATH (only required for `browser_run_recipe`, degrades gracefully if absent). The recipe runtime (`recipe-runner.mjs`) uses Node's native global `WebSocket`, which is only stable from version 22; on an earlier version, `browser_run_recipe` would fail with `WebSocket is not defined`
 - Google Chrome installed (detected automatically in the standard locations)
@@ -37,7 +37,7 @@ cargo build --release
 
 The `release` profile uses `lto = "thin"` rather than `lto = true` (fat LTO). Full LTO crashed LLVM with an out-of-memory error on a standard development machine while this project was being tuned; `thin` captures most of the performance gain without that risk.
 
-The resulting binary is at `target/release/spectra-server.exe`.
+The resulting binary is at `target/release/spectra-server.exe` on Windows, or `target/release/spectra-server` on macOS/Linux.
 
 ### Permanent installation
 
@@ -45,6 +45,26 @@ The resulting binary is at `target/release/spectra-server.exe`.
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.spectra\bin"
 Copy-Item "target\release\spectra-server.exe" "$env:USERPROFILE\.spectra\bin\spectra-server.exe"
 ```
+
+On macOS/Linux:
+
+```sh
+mkdir -p "$HOME/.spectra/bin"
+cp target/release/spectra-server "$HOME/.spectra/bin/spectra-server"
+```
+
+Profiles and the embedded recipe runtime live under `%LOCALAPPDATA%\Spectra` on Windows,
+`~/Library/Application Support/Spectra` on macOS, and `$XDG_DATA_HOME/Spectra`
+(default `~/.local/share/Spectra`) on Linux. They are never stored in your source repository.
+
+For Codex, register the installed binary (macOS/Linux):
+
+```sh
+codex mcp add spectra -- "$HOME/.spectra/bin/spectra-server"
+```
+
+Ensure Node.js 22+ is on the MCP server's `PATH` to use recipes. For a Homebrew
+versioned Node installation, include its `bin` directory in that environment.
 
 ## Enabling it in Claude Code
 

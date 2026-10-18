@@ -73,9 +73,21 @@ pub fn spectra_home() -> PathBuf {
 }
 
 fn dirs_local_appdata() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
+    #[cfg(windows)]
+    let base = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
+    #[cfg(target_os = "macos")]
+    let base = std::env::var_os("HOME")
+        .map(|home| PathBuf::from(home).join("Library").join("Application Support"));
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let base = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
+        .filter(|path| path.is_absolute())
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")));
+    #[cfg(not(any(windows, unix)))]
+    let base: Option<PathBuf> = None;
+
+    // Never leave browser profiles in the caller's source repository.
+    base.filter(|path| path.is_absolute()).unwrap_or_else(std::env::temp_dir)
 }
 
 pub fn profile_dir_for(project_key: &str) -> PathBuf {
@@ -173,11 +185,34 @@ fn acquire_lock(profile_dir: &Path, port: u16) -> Result<()> {
 
 fn process_alive(pid: &str) -> bool {
     let Ok(pid_n) = pid.parse::<u32>() else { return false };
+    if pid_n == 0 || pid_n > i32::MAX as u32 {
+        return false;
+    }
+    process_alive_platform(pid_n)
+}
+
+#[cfg(windows)]
+fn process_alive_platform(pid_n: u32) -> bool {
     std::process::Command::new("tasklist")
         .args(["/FI", &format!("PID eq {pid_n}"), "/NH"])
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).contains(&pid_n.to_string()))
         .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn process_alive_platform(pid_n: u32) -> bool {
+    // Signal 0 checks existence without sending a signal to the process.
+    std::process::Command::new("/bin/kill")
+        .args(["-0", &pid_n.to_string()])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(not(any(windows, unix)))]
+fn process_alive_platform(_pid_n: u32) -> bool {
+    false
 }
 
 /// Emplacements standards où chercher un exécutable Chrome/Chromium sur
@@ -377,4 +412,47 @@ async fn spawn_chrome(
     });
 
     Ok((browser, ws_url))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn current_process_is_alive() {
+        assert!(process_alive(&std::process::id().to_string()));
+    }
+
+    #[test]
+    fn invalid_pids_are_not_alive() {
+        for pid in ["", "invalid", "-1", "0", "4294967295"] {
+            assert!(!process_alive(pid), "unexpected live pid: {pid}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn exited_process_is_not_alive() {
+        let mut child = std::process::Command::new("/usr/bin/true").spawn().unwrap();
+        let pid = child.id().to_string();
+        child.wait().unwrap();
+        assert!(!process_alive(&pid));
+    }
+
+    #[test]
+    fn profiles_have_a_stable_absolute_location() {
+        let profile = profile_dir_for("/example/project");
+        assert!(profile.is_absolute());
+        assert!(profile.starts_with(spectra_home().join("profiles")));
+        assert_eq!(profile, profile_dir_for("/example/project"));
+        assert_ne!(profile, profile_dir_for("/example/other"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_uses_application_support() {
+        if let Some(home) = std::env::var_os("HOME") {
+            assert_eq!(spectra_home(), PathBuf::from(home).join("Library/Application Support/Spectra"));
+        }
+    }
 }
